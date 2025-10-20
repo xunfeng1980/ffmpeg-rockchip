@@ -101,6 +101,8 @@ const AVOption ff_rtsp_options[] = {
     { "timeout", "set timeout (in microseconds) of socket I/O operations", OFFSET(stimeout), AV_OPT_TYPE_INT64, {.i64 = 0}, INT_MIN, INT64_MAX, DEC },
     COMMON_OPTS(),
     { "user_agent", "override User-Agent header", OFFSET(user_agent), AV_OPT_TYPE_STRING, {.str = LIBAVFORMAT_IDENT}, 0, 0, DEC },
+    { "use_rtcp_ntp_pts", "use RTCP Sender Report NTP time to rewrite packet PTS for synchronization", 
+      OFFSET(use_rtcp_ntp_pts), AV_OPT_TYPE_BOOL, {.i64 = 0}, 0, 1, DEC },
     { NULL },
 };
 

@@ -351,6 +351,9 @@ typedef struct RTSPState {
      */
     int lower_transport_mask;
 
+    int use_rtcp_ntp_pts;
+
+
     /**
      * The number of returned packets
      */

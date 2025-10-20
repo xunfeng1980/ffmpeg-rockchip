@@ -937,6 +937,41 @@ retry:
     }
     rt->packets++;
 
+    /* Rewrite PTS using RTCP NTP timestamp if enabled */
+    if (rt->use_rtcp_ntp_pts && pkt->pts != AV_NOPTS_VALUE && pkt->stream_index >= 0) {
+        av_log(s, AV_LOG_INFO, "Rewrite PTS using RTCP NTP timestamp\n");
+        RTSPStream *rtsp_st = rt->rtsp_streams[pkt->stream_index];
+        if (rtsp_st && rtsp_st->transport_priv) {
+            RTPDemuxContext *rtpctx = rtsp_st->transport_priv;
+            if (rtpctx->last_rtcp_ntp_time != AV_NOPTS_VALUE && rtpctx->last_rtcp_timestamp != 0) {
+                uint32_t pkt_rtp_ts = pkt->pts;
+                int32_t rtp_diff = (int32_t)(pkt_rtp_ts - rtpctx->last_rtcp_timestamp);
+
+                uint64_t ntp64 = rtpctx->last_rtcp_ntp_time;
+                double ntp_sec = (double)(ntp64 >> 32) + (double)((uint32_t)ntp64) / (double)(1ULL << 32);
+
+                AVStream *st = s->streams[pkt->stream_index];
+                int clock_rate = 90000; /* default for video */
+                if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && st->codecpar->sample_rate > 0) {
+                    clock_rate = st->codecpar->sample_rate;
+                }
+
+                double abs_time_sec = ntp_sec + (double)rtp_diff / (double)clock_rate;
+                int64_t new_pts = (int64_t)(abs_time_sec * AV_TIME_BASE + 0.5);
+
+                /* Simple monotonic check (per-stream would be better) */
+                static int64_t last_global_pts = AV_NOPTS_VALUE;
+                if (last_global_pts == AV_NOPTS_VALUE || new_pts >= last_global_pts - AV_TIME_BASE) {
+                    pkt->pts = pkt->dts = new_pts;
+                    last_global_pts = new_pts;
+                } else {
+                    av_log(s, AV_LOG_WARNING, "NTP PTS jump backward, keeping original PTS\n");
+                }
+            }
+        }
+    }
+
+
     if (!(rt->rtsp_flags & RTSP_FLAG_LISTEN)) {
         /* send dummy request to keep TCP connection alive */
         if ((av_gettime_relative() - rt->last_cmd_time) / 1000000 >= rt->timeout / 2 ||
