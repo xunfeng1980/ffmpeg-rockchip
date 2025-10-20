@@ -185,6 +185,10 @@ struct RTPDemuxContext {
     unsigned int last_octet_count;
     int64_t last_feedback_time;
 
+    /* Improved timestamp synchronization */
+    int64_t last_pkt_pts;      ///< Last packet PTS for monotonic check
+    int64_t last_pkt_delta;    ///< Last packet PTS delta for extrapolation
+
     /* dynamic payload stuff */
     const RTPDynamicProtocolHandler *handler;
     PayloadContext *dynamic_protocol_context;

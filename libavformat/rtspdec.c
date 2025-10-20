@@ -795,7 +795,7 @@ redo:
         ret = ff_rtsp_read_reply(s, &reply, NULL, 1, NULL);
         if (ret < 0)
             return ret;
-        if (ret == 1) /* received '$' */
+        if (ret == 1) /* received ' */
             break;
         /* XXX: parse message */
         if (rt->state != RTSP_STATE_STREAMING)
@@ -937,7 +937,7 @@ retry:
     }
     rt->packets++;
 
-    /* Rewrite PTS using RTCP NTP timestamp if enabled */
+    /* Rewrite PTS using RTCP NTP timestamp with improved synchronization */
     if (rt->use_rtcp_ntp_pts && pkt->pts != AV_NOPTS_VALUE && pkt->stream_index >= 0) {
         av_log(s, AV_LOG_INFO, "Rewrite PTS using RTCP NTP timestamp\n");
         RTSPStream *rtsp_st = rt->rtsp_streams[pkt->stream_index];
@@ -959,13 +959,21 @@ retry:
                 double abs_time_sec = ntp_sec + (double)rtp_diff / (double)clock_rate;
                 int64_t new_pts = (int64_t)(abs_time_sec * AV_TIME_BASE + 0.5);
 
-                /* Simple monotonic check (per-stream would be better) */
-                static int64_t last_global_pts = AV_NOPTS_VALUE;
-                if (last_global_pts == AV_NOPTS_VALUE || new_pts >= last_global_pts - AV_TIME_BASE) {
+                /* Improved monotonic check with per-stream tracking */
+                if (rtpctx->last_pkt_pts == AV_NOPTS_VALUE || new_pts >= rtpctx->last_pkt_pts) {
                     pkt->pts = pkt->dts = new_pts;
-                    last_global_pts = new_pts;
+                    rtpctx->last_pkt_pts = new_pts;
                 } else {
-                    av_log(s, AV_LOG_WARNING, "NTP PTS jump backward, keeping original PTS\n");
+                    av_log(s, AV_LOG_WARNING, "NTP PTS jump backward, using extrapolated PTS\n");
+                    /* Extrapolate PTS based on previous packet timing */
+                    int64_t expected_pts = rtpctx->last_pkt_pts + rtpctx->last_pkt_delta;
+                    pkt->pts = pkt->dts = expected_pts;
+                    rtpctx->last_pkt_pts = expected_pts;
+                }
+                
+                /* Store delta for extrapolation */
+                if (rtpctx->last_pkt_pts != AV_NOPTS_VALUE && new_pts > rtpctx->last_pkt_pts) {
+                    rtpctx->last_pkt_delta = new_pts - rtpctx->last_pkt_pts;
                 }
             }
         }

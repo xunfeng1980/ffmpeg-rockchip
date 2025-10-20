@@ -582,6 +582,8 @@ RTPDemuxContext *ff_rtp_parse_open(AVFormatContext *s1, AVStream *st,
     s->payload_type        = payload_type;
     s->last_rtcp_ntp_time  = AV_NOPTS_VALUE;
     s->first_rtcp_ntp_time = AV_NOPTS_VALUE;
+    s->last_pkt_pts        = AV_NOPTS_VALUE;
+    s->last_pkt_delta      = 0;
     s->ic                  = s1;
     s->st                  = st;
     s->queue_size          = queue_size;
@@ -788,6 +790,8 @@ void ff_rtp_reset_packet_queue(RTPDemuxContext *s)
     s->seq       = 0;
     s->queue_len = 0;
     s->prev_ret  = 0;
+    s->last_pkt_pts = AV_NOPTS_VALUE;
+    s->last_pkt_delta = 0;
 }
 
 static int enqueue_packet(RTPDemuxContext *s, uint8_t *buf, int len)
