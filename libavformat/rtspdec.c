@@ -943,6 +943,7 @@ retry:
         RTSPStream *rtsp_st = rt->rtsp_streams[pkt->stream_index];
         if (rtsp_st && rtsp_st->transport_priv) {
             RTPDemuxContext *rtpctx = rtsp_st->transport_priv;
+            av_log(s, AV_LOG_INFO, "stream index:%d last_rtcp_ntp_time:%d last_rtcp_timestamp:%d\n",pkt->stream_index,rtpctx->last_rtcp_ntp_time,rtpctx->last_rtcp_timestamp);
             if (rtpctx->last_rtcp_ntp_time != AV_NOPTS_VALUE && rtpctx->last_rtcp_timestamp != 0) {
                 uint32_t pkt_rtp_ts = pkt->pts;
                 int32_t rtp_diff = (int32_t)(pkt_rtp_ts - rtpctx->last_rtcp_timestamp);
