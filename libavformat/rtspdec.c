@@ -939,7 +939,7 @@ retry:
 
     /* Rewrite PTS using RTCP NTP timestamp with improved synchronization */
     if (rt->use_rtcp_ntp_pts && pkt->pts != AV_NOPTS_VALUE && pkt->stream_index >= 0) {
-        av_log(s, AV_LOG_INFO, "Rewrite PTS using RTCP NTP timestamp\n");
+        av_log(s, AV_LOG_DEBUG, "Rewrite PTS using RTCP NTP timestamp\n");
         RTSPStream *rtsp_st = rt->rtsp_streams[pkt->stream_index];
         if (rtsp_st && rtsp_st->transport_priv) {
             RTPDemuxContext *rtpctx = rtsp_st->transport_priv;
@@ -958,6 +958,7 @@ retry:
 
                 double abs_time_sec = ntp_sec + (double)rtp_diff / (double)clock_rate;
                 int64_t new_pts = (int64_t)(abs_time_sec * AV_TIME_BASE + 0.5);
+                av_log(s, AV_LOG_INFO, "stream index:%d new_pts:%d\n",pkt->stream_index,new_pts);
 
                 /* Improved monotonic check with per-stream tracking */
                 if (rtpctx->last_pkt_pts == AV_NOPTS_VALUE || new_pts >= rtpctx->last_pkt_pts) {
